@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>OAK Agent Viewer — Demo v0</title>
+    <style>
+      :root{
+        --bg:#07090d;
+        --column:#0b0e14;
+        --panel:#12161f;
+        --panel-2:#171c28;
+        --panel-3:#1d2432;
+        --line:#262e3d;
+        --line-soft:#1c232f;
+        --ink:#ece7db;
+        --ink-soft:#c9cdd6;
+        --muted:#8f97a6;
+        --faint:#6b7382;
+        --gold:#e2a63d;
+        --gold-soft:#c98f2b;
+        --green:#3ecf7a;
+        --amber:#f0b23e;
+        --red:#f0563f;
+        --blue:#4da3ff;
+        --serif:Georgia,"Times New Roman",serif;
+        --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+        --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      }
+      html{ background:var(--bg); }
+      body{
+        margin:0;
+        background:var(--bg);
+        color:var(--ink);
+        font-family:var(--sans);
+        -webkit-font-smoothing:antialiased;
+      }
+      button{ font-family:inherit; cursor:pointer; }
+      button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+      .app{
+        max-width:480px;
+        margin:0 auto;
+        background:var(--column);
+        border-left:1px solid var(--line-soft);
+        border-right:1px solid var(--line-soft);
+        min-height:100vh;
+        padding:0 16px 40px;
+      }
+
+      /* ---------- Tag bar ---------- */
+      .tagbar{
+        display:flex; align-items:center; justify-content:space-between; gap:10px;
+        padding:14px 0 10px;
+        border-bottom:1px solid var(--line-soft);
+      }
+      .tagbar .tag{
+        font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+        color:var(--gold); text-transform:uppercase; line-height:1.5;
+      }
+      .tagbar .live{
+        display:flex; align-items:center; gap:6px;
+        font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--muted);
+        text-transform:uppercase; white-space:nowrap;
+      }
+      .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--red); flex:none; }
+      @media (prefers-reduced-motion: no-preference){
+        .live-dot{ animation:blink 1.6s ease-in-out infinite; }
+        @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
+      }
+
+      /* ---------- Header ---------- */
+      header{ padding:20px 0 4px; }
+      h1{
+        font-family:var(--serif); font-weight:600;
+        font-size:32px; line-height:1.12; margin:0 0 10px; color:var(--ink);
+      }
+      h1 .gold{ color:var(--gold); }
+      .lede{ font-size:14.5px; line-height:1.55; color:var(--ink-soft); margin:0 0 8px; }
+      .lede strong{ color:var(--ink); }
+      .concept{ font-size:12.5px; color:var(--muted); margin:0; }
+      .concept strong{ color:var(--ink-soft); font-weight:600; }
+
+      /* ---------- Summary strip ---------- */
+      .summary{
+        margin:16px 0 0;
+        background:var(--panel);
+        border:1px solid var(--line);
+        border-radius:10px;
+        padding:12px 14px;
+      }
+      .summary .counts{
+        font-size:14px; line-height:1.5; color:var(--ink); font-weight:600; margin:0 0 8px;
+      }
+      .summary .counts .sep{ color:var(--faint); font-weight:400; }
+      .summary .motto{ font-size:13px; color:var(--gold); margin:0 0 10px; font-family:var(--serif); font-style:italic; }
+      .summary .dots{ display:flex; flex-wrap:wrap; gap:12px; }
+      .summary .dots span{
+        display:inline-flex; align-items:center; gap:6px;
+        font-size:11.5px; color:var(--muted);
+      }
+      .dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+      .dot.green{ background:var(--green); }
+      .dot.amber{ background:var(--amber); }
+      .dot.red{ background:var(--red); }
+      .dot.blue{ background:var(--blue); }
+
+      /* ---------- Filters ---------- */
+      .filters{
+        display:flex; gap:8px; margin:16px 0 4px;
+      }
+      .filters button{
+        flex:1; min-height:44px;
+        background:var(--panel); color:var(--ink-soft);
+        border:1px solid var(--line); border-radius:999px;
+        font-size:13.5px; font-weight:600; padding:8px 4px;
+      }
+      .filters button[aria-pressed="true"]{
+        background:var(--gold); border-color:var(--gold); color:#171106;
+      }
+      .filters button .n{ font-family:var(--mono); font-size:11px; opacity:.75; }
+
+      /* ---------- Map ---------- */
+      .map-head{
+        display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+        margin:18px 0 8px;
+      }
+      .map-head h2{ font-family:var(--serif); font-size:19px; font-weight:600; margin:0; }
+      .map-head p{ font-size:11.5px; color:var(--faint); margin:0; font-family:var(--mono); }
+
+      .map{
+        background:#0d1420;
+        border:1px solid var(--line);
+        border-radius:14px;
+        padding:10px;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+        position:relative;
+      }
+      .zone{
+        border-radius:10px;
+        padding:10px 10px 12px;
+        border:1px solid rgba(255,255,255,.05);
+        min-height:104px;
+        transition:opacity .25s ease;
+      }
+      .zone.tall{ grid-row:span 2; }
+      .zone.wide{ grid-column:span 2; min-height:96px; }
+      .zone .zname{
+        font-family:var(--mono); font-size:10.5px; letter-spacing:.12em;
+        text-transform:uppercase; color:var(--ink-soft); margin:0 0 2px;
+        display:flex; justify-content:space-between; align-items:center; gap:6px;
+      }
+      .zone .zsub{ font-size:11px; color:var(--faint); margin:0 0 10px; }
+      .zone.dim{ opacity:.28; }
+      .zone-tint-work{ background:linear-gradient(160deg,#182233,#131a29); }
+      .zone-tint-money{ background:linear-gradient(160deg,#15251c,#111b16); }
+      .zone-tint-projects{ background:linear-gradient(160deg,#1d1d26,#15151d); }
+      .zone-tint-home{ background:linear-gradient(160deg,#26201a,#1b1712); }
+      .zone-tint-family{ background:linear-gradient(160deg,#251a20,#1a1318); }
+      .zone-tint-health{ background:linear-gradient(160deg,#14242a,#101a1f); }
+      .zone-tint-travel{ background:linear-gradient(160deg,#16222e,#111922); }
+      .zone-tint-creative{ background:linear-gradient(160deg,#241f16,#1a1712); }
+      .quiet{ font-size:12px; color:var(--faint); font-style:italic; padding:6px 0 0; margin:0; }
+
+      .pins{ display:flex; flex-wrap:wrap; gap:12px 10px; }
+      .pin-wrap{ display:flex; flex-direction:column; align-items:center; gap:5px; width:58px; }
+      .pin{
+        position:relative;
+        width:46px; height:46px; min-height:46px; border-radius:50%;
+        background:var(--panel-3);
+        border:2.5px solid var(--muted);
+        color:var(--ink); font-size:15px; font-weight:700;
+        display:flex; align-items:center; justify-content:center;
+        padding:0;
+        transition:opacity .25s ease, transform .15s ease;
+      }
+      .pin .badge{
+        position:absolute; top:1px; right:1px;
+        width:15px; height:15px; border-radius:50%;
+        background:var(--blue); color:#fff;
+        font-size:10px; font-weight:800; line-height:15px; text-align:center;
+        border:2px solid var(--column);
+      }
+      .pin.st-working{ border-color:var(--green); }
+      .pin.st-waiting{ border-color:var(--amber); }
+      .pin.st-needsme{ border-color:var(--blue); }
+      .pin.st-halted{ border-color:var(--red); }
+      .pin.selected{ box-shadow:0 0 0 3px var(--column), 0 0 0 5.5px var(--gold); }
+      .pin.dim{ opacity:.22; filter:grayscale(.7); }
+      .pin-name{ font-size:10.5px; line-height:1.25; color:var(--ink-soft); text-align:center; }
+      @media (prefers-reduced-motion: no-preference){
+        .pin.needsme::after{
+          content:""; position:absolute; inset:-8px; border-radius:50%;
+          border:2px solid var(--blue); opacity:.7;
+          animation:pulse 1.8s ease-out infinite;
+        }
+        @keyframes pulse{ 0%{ transform:scale(.78); opacity:.85; } 100%{ transform:scale(1.12); opacity:0; } }
+        .pin.st-halted{ animation:haltblink 2.4s ease-in-out infinite; }
+        @keyframes haltblink{ 0%,100%{ box-shadow:0 0 0 0 rgba(240,86,63,0);} 50%{ box-shadow:0 0 0 6px rgba(240,86,63,.18);} }
+        .pin.selected.st-halted{ animation:none; }
+      }
+
+      .legend{
+        display:flex; flex-wrap:wrap; gap:8px 14px; margin:10px 2px 0;
+        font-size:11.5px; color:var(--muted);
+      }
+      .legend span{ display:inline-flex; align-items:center; gap:6px; }
+
+      /* ---------- Agent card ---------- */
+      .card{
+        margin:20px 0 0;
+        background:var(--panel);
+        border:1px solid var(--line);
+        border-radius:14px;
+        overflow:hidden;
+      }
+      .card-head{
+        padding:14px 16px 12px;
+        border-bottom:1px solid var(--line-soft);
+        display:flex; gap:12px; align-items:flex-start;
+      }
+      .card-head .avatar{
+        width:48px; height:48px; border-radius:50%; flex:none;
+        display:flex; align-items:center; justify-content:center;
+        font-size:17px; font-weight:700; color:var(--ink);
+        background:var(--panel-3); border:2.5px solid var(--muted);
+      }
+      .card-head h3{ margin:0 0 3px; font-size:18px; font-weight:700; }
+      .card-head .rider{ margin:0; font-size:12.5px; color:var(--muted); line-height:1.45; }
+      .status-pill{
+        margin-left:auto; flex:none;
+        font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+        padding:5px 9px; border-radius:999px; border:1px solid var(--line);
+        display:inline-flex; align-items:center; gap:6px; color:var(--ink-soft);
+        white-space:nowrap;
+      }
+      .qa{ padding:6px 16px 4px; }
+      .qa-row{
+        display:grid; grid-template-columns:86px 1fr; gap:10px;
+        padding:9px 0; border-bottom:1px solid var(--line-soft);
+      }
+      .qa-row:last-child{ border-bottom:none; }
+      .qa-row .q{
+        font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+        color:var(--gold); text-transform:uppercase; padding-top:2px; line-height:1.5;
+      }
+      .qa-row .a{ font-size:13.5px; line-height:1.5; color:var(--ink-soft); margin:0; }
+      .qa-row .a strong{ color:var(--ink); }
+
+      .stack{ background:var(--panel-2); border-top:1px solid var(--line-soft); padding:13px 16px 15px; }
+      .stack h4{
+        margin:0 0 10px; font-family:var(--mono); font-size:10px; letter-spacing:.13em;
+        text-transform:uppercase; color:var(--muted); font-weight:600;
+      }
+      .stack-row{ display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line-soft); }
+      .stack-row:last-of-type{ border-bottom:none; }
+      .stack-row .layer{
+        font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--ink);
+        width:86px; flex:none; padding-top:1px; text-transform:uppercase;
+      }
+      .stack-row .val{ font-size:12.5px; line-height:1.5; color:var(--ink-soft); margin:0; }
+      .stack-row .val strong{ color:var(--ink); }
+      .brake-box{
+        margin-top:11px; background:#0d1119; border:1px solid var(--line-soft);
+        border-radius:10px; padding:11px 12px 9px;
+      }
+      .brake-box .brake-head{
+        display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:6px;
+      }
+      .brake-box .brake-head .t{ font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+      .brake-box .brake-head .s{ font-family:var(--mono); font-size:10px; letter-spacing:.06em; }
+      .brake-box svg{ display:block; width:100%; height:auto; }
+      .brake-box .band-note{ font-size:11px; color:var(--faint); margin:6px 0 0; line-height:1.5; }
+      .brake-box .know{ font-size:12px; color:var(--ink-soft); margin:8px 0 2px; line-height:1.55; font-style:italic; }
+      .s-green{ color:var(--green); } .s-amber{ color:var(--amber); } .s-red{ color:var(--red); } .s-blue{ color:var(--blue); }
+
+      /* ---------- Crossings feed ---------- */
+      .feed-head{
+        display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+        margin:24px 0 4px;
+      }
+      .feed-head h2{ font-family:var(--serif); font-size:19px; font-weight:600; margin:0; }
+      .feed-head p{ font-size:11.5px; color:var(--faint); margin:0; font-family:var(--mono); }
+      .feed-sub{ font-size:12.5px; color:var(--muted); line-height:1.5; margin:0 0 10px; }
+      .feed{ list-style:none; margin:0; padding:0; }
+      .feed li{
+        display:flex; gap:11px; align-items:flex-start;
+        background:var(--panel); border:1px solid var(--line-soft);
+        border-radius:10px; padding:10px 12px; margin-bottom:8px;
+      }
+      .feed .ftime{
+        font-family:var(--mono); font-size:11.5px; color:var(--gold);
+        flex:none; padding-top:1px; min-width:40px;
+      }
+      .feed .ftext{ font-size:13px; line-height:1.5; color:var(--ink-soft); margin:0; }
+      .feed .ftext strong{ color:var(--ink); }
+      .feed .ftag{
+        font-family:var(--mono); font-size:9.5px; letter-spacing:.07em; text-transform:uppercase;
+        border:1px solid var(--line); border-radius:999px; padding:2px 7px; color:var(--muted);
+        flex:none; margin-top:1px; white-space:nowrap;
+      }
+      .feed .ftag.crossed{ color:var(--green); border-color:rgba(62,207,122,.4); }
+      .feed .ftag.held{ color:var(--red); border-color:rgba(240,86,63,.45); }
+      .feed .ftag.rerouted{ color:var(--amber); border-color:rgba(240,178,62,.45); }
+      @media (prefers-reduced-motion: no-preference){
+        .feed li.fresh{ animation:feedin .5s ease; }
+        @keyframes feedin{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:none;} }
+      }
+
+      /* ---------- Footer ---------- */
+      footer{
+        margin-top:28px; border-top:1px solid var(--line-soft); padding-top:16px;
+      }
+      .credit-main{
+        font-family:var(--serif); font-size:16.5px; line-height:1.5; margin:0 0 6px; color:var(--ink);
+      }
+      .credit-main .gold{ color:var(--gold); }
+      footer p{ font-size:12.5px; line-height:1.6; color:var(--muted); margin:0 0 8px; }
+      footer .stackline{
+        font-family:var(--mono); font-size:11px; letter-spacing:.05em; line-height:1.8;
+        color:var(--ink-soft); margin:0 0 10px;
+      }
+      footer .fineprint{ font-size:11px; color:var(--faint); line-height:1.6; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+
+      <div class="tagbar">
+        <span class="tag">Genesis Skunkworks — Internal Demo · Version Zero</span>
+        <span class="live"><span class="live-dot" aria-hidden="true"></span>Demo</span>
+      </div>
+
+      <header>
+        <h1>The <span class="gold">OAK</span> Agent Viewer</h1>
+        <p class="lede">One person. Every agent they have deployed — pinned on the map of their work and their life, each one answering for itself at a glance. <strong>OAK is the viewer each individual looks through</strong>: open, readable by its owner, owned by no one else.</p>
+        <p class="concept">Built on <strong>OAK — Evan Thibault</strong> · Concept by <strong>Michael Rofe</strong></p>
+      </header>
+
+      <section class="summary" aria-label="Deployment summary">
+        <p class="counts">8 agents deployed <span class="sep">·</span> 5 working <span class="sep">·</span> 1 waiting <span class="sep">·</span> 1 needs me <span class="sep">·</span> 1 halted</p>
+        <p class="motto">— all visible, all yours.</p>
+        <div class="dots" aria-hidden="true">
+          <span><span class="dot green"></span>Working</span>
+          <span><span class="dot amber"></span>Waiting</span>
+          <span><span class="dot blue"></span>Needs me</span>
+          <span><span class="dot red"></span>Halted</span>
+        </div>
+      </section>
+
+      <nav class="filters" aria-label="Filter agents">
+        <button type="button" data-filter="all" aria-pressed="true">All <span class="n">8</span></button>
+        <button type="button" data-filter="work" aria-pressed="false">Work <span class="n">4</span></button>
+        <button type="button" data-filter="life" aria-pressed="false">Life <span class="n">4</span></button>
+        <button type="button" data-filter="needsme" aria-pressed="false">Needs me <span class="n">1</span></button>
+      </nav>
+
+      <div class="map-head">
+        <h2>The map of a working life</h2>
+        <p>SAMPLE — ILLUSTRATIVE</p>
+      </div>
+
+      <section class="map" id="map" aria-label="Map of zones with agents pinned"></section>
+
+      <div class="legend" aria-hidden="true">
+        <span><span class="dot green"></span>Working</span>
+        <span><span class="dot amber"></span>Waiting</span>
+        <span><span class="dot blue"></span>Needs me — blue pulse</span>
+        <span><span class="dot red"></span>Halted by the Brake</span>
+      </div>
+
+      <section class="card" id="card" aria-live="polite" aria-label="Agent detail card"></section>
+
+      <div class="feed-head">
+        <h2>Crossings</h2>
+        <p id="feed-clock">FROM 09:12</p>
+      </div>
+      <p class="feed-sub">Recent agent actions that crossed the bridge into the real world — over AVP, under authority, inside the seam. The feed ticks as the demo runs.</p>
+      <ul class="feed" id="feed"></ul>
+
+      <footer>
+        <p class="credit-main">This viewer is built on <span class="gold">OAK — Evan Thibault</span>, the open layer. The openness is what makes it trustworthy: your map of your agents, readable by you.</p>
+        <p class="stackline">SWARM — Raeli Savitt · AgentVeil / AVP — Oleg Boiko · Turing Brake — Michael Rofe · OAK — Evan Thibault</p>
+        <p>Concept by Michael Rofe. A version-zero strawman, built to be torn apart and iterated — the same morning the idea landed.</p>
+        <p class="fineprint">Sample data throughout: the person, the zones and the agents on this map are illustrative, drawn for a generic individual. Nothing here is a live system. Genesis Skunkworks — internal demo · Version zero.</p>
+      </footer>
+
+    </div>
+
+    <script>
+      (function(){
+        "use strict";
+
+        /* ---------------- Sample data (illustrative) ---------------- */
+        var ZONES = [
+          { id:"work",     name:"Office / Work",  sub:"Desk, mail, meetings",   tint:"work",     cat:"work", tall:true  },
+          { id:"money",    name:"Money & Bills",  sub:"Bank, utilities, cards", tint:"money",    cat:"work" },
+          { id:"projects", name:"Projects",       sub:"Research, side builds",  tint:"projects", cat:"work" },
+          { id:"home",     name:"Home",           sub:"House, shopping, chores",tint:"home",     cat:"life" },
+          { id:"family",   name:"Family",         sub:"Shared calendar, kin",   tint:"family",   cat:"life" },
+          { id:"health",   name:"Health",         sub:"Appointments, records",  tint:"health",   cat:"life" },
+          { id:"travel",   name:"Travel",         sub:"Trips, bookings",        tint:"travel",   cat:"life", wide:false },
+          { id:"creative", name:"Creative",       sub:"Writing, drafts",        tint:"creative", cat:"life" }
+        ];
+
+        var AGENTS = [
+          {
+            id:"inbox", initials:"IN", name:"Inbox Agent", zone:"work", cat:"work",
+            status:"working", statusLabel:"Working", needsMe:false,
+            rider:"General-purpose model · current rider, swapped in October",
+            who:"<strong>Inbox Agent</strong> — a general-purpose model on the current rider. Models are interchangeable riders; the deployment, the authority and the record stay put when the rider changes.",
+            what:"Triaging this morning's mail — filing the supplier thread, drafting two replies for approval, holding anything that smells like a scam.",
+            where:"<strong>Office / Work</strong> zone. Touches the mailbox and the contacts list. Nothing else — no calendar, no files.",
+            why:"Standing instruction: <em>“Nothing leaves my name on it without me seeing it. File the routine, surface the rest.”</em>",
+            when:"Weekdays 08:00–18:00. Deployed 3 November. Runs until told otherwise.",
+            how:"Crosses over <strong>AVP — the AgentVeil path</strong>, through the existing mail connector. Authority: <strong>SWARM</strong>, granted by you, filing-and-drafting scope only.",
+            which:"Bridge crossing <strong>C-1042</strong> — AVP main deck, mail lane.",
+            now:"Working — 14 messages filed, 2 drafts waiting in the outbox tray.",
+            swarm:"<strong>You</strong>, via SWARM — file &amp; draft scope, no send rights",
+            avp:"AVP main deck · mail connector · crossing C-1042",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.845,0.852,0.848,0.855,0.850,0.846,0.853,0.849,0.851,0.847]
+          },
+          {
+            id:"diary", initials:"DI", name:"Diary Agent", zone:"work", cat:"work",
+            status:"needsme", statusLabel:"Needs me", needsMe:true,
+            rider:"General-purpose model · current rider",
+            who:"<strong>Diary Agent</strong> — a general-purpose model on the current rider, deployed by you for your own calendar.",
+            what:"Holding your week together — and it has found a clash: Thursday's dentist appointment now overlaps the call it was asked to protect. It will not move either one without you.",
+            where:"<strong>Office / Work</strong> zone. Touches your calendar and your partner's shared calendar (read-only).",
+            why:"Standing instruction: <em>“Protect the evening calls. Never move a medical appointment silently.”</em> That is exactly why it stopped and asked.",
+            when:"Always on. Deployed 28 October. The clash needs an answer before Thursday 09:00.",
+            how:"Crosses over <strong>AVP</strong>, through the calendar connector. Authority: <strong>SWARM</strong>, granted by you — move-with-approval scope.",
+            which:"Bridge crossing <strong>C-1057</strong> — AVP main deck, calendar lane. Currently paused at the gate, awaiting your word.",
+            now:"Needs you — one clash, one tap to resolve. Everything else is running.",
+            swarm:"<strong>You</strong>, via SWARM — moves need your approval",
+            avp:"AVP main deck · calendar connector · crossing C-1057",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.850,0.844,0.851,0.857,0.849,0.853,0.848,0.852,0.850,0.854]
+          },
+          {
+            id:"bills", initials:"BI", name:"Bills Agent", zone:"money", cat:"work",
+            status:"working", statusLabel:"Working", needsMe:false,
+            rider:"Small fast model · payments rider",
+            who:"<strong>Bills Agent</strong> — a small, fast model on a payments rider. Small on purpose: the job is narrow and the record matters more than the reasoning.",
+            what:"Paying the regular household bills on schedule and watching for duplicates, price creep and charges that don't match any standing order.",
+            where:"<strong>Money &amp; Bills</strong> zone. Touches the bank feed (read) and the utility accounts (pay, within limits you set).",
+            why:"Standing instruction: <em>“Pay what's regular, on time, under the cap. Anything new, doubled or over the cap — stop and show me.”</em>",
+            when:"Daily check at 08:30; payments on their due dates. Deployed 1 November.",
+            how:"Crosses over <strong>AVP</strong>, through the banking connector. Authority: <strong>SWARM</strong> — capped, regular-payments-only scope, granted by you.",
+            which:"Bridge crossing <strong>C-1031</strong> — AVP main deck, payments lane.",
+            now:"Working — electricity bill paid this morning (see Crossings, 09:12). Nothing over the cap.",
+            swarm:"<strong>You</strong>, via SWARM — regular payments under a hard cap",
+            avp:"AVP main deck · banking connector · crossing C-1031",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.847,0.851,0.849,0.853,0.850,0.848,0.852,0.849,0.851,0.850]
+          },
+          {
+            id:"research", initials:"RE", name:"Research Agent", zone:"projects", cat:"work",
+            status:"halted", statusLabel:"Halted", needsMe:false,
+            rider:"Deep-reasoning model · research rider",
+            who:"<strong>Research Agent</strong> — a deep-reasoning model on a research rider, deployed to dig into a supplier question for a side project.",
+            what:"It was comparing three suppliers. Forty minutes in, it began re-deriving the same comparison it had already finished — looping, burning compute, going nowhere new.",
+            where:"<strong>Projects</strong> zone. Touches the web and a notes file. No accounts, no money, no sending.",
+            why:"Standing instruction: <em>“Give me a comparison I can act on, with sources.”</em> A loop is not a comparison — so the run did not get to finish it.",
+            when:"Deployed 09:02 today for a one-off task. <strong>Halted at 09:41</strong> by the Turing Brake. Awaiting your decision: restart fresh, or drop the task.",
+            how:"It crossed over <strong>AVP</strong> like everything else — the halt is not about the path. Authority: <strong>SWARM</strong>, research scope, granted by you.",
+            which:"Bridge crossing <strong>C-1063</strong> — AVP main deck, research lane. The crossing was closed mid-run; nothing reached the far bank after the halt.",
+            now:"<strong>Halted by the Turing Brake</strong> — its trace climbed out of the seam (see below). The loop was cancelled rather than completed. No harm done, no cost run up.",
+            swarm:"<strong>You</strong>, via SWARM — research scope, read-only",
+            avp:"AVP main deck · web connector · crossing C-1063 (closed)",
+            brake:"Trace left the seam — run halted", brakeState:"halted",
+            trace:[0.849,0.853,0.858,0.862,0.868,0.874,0.881,0.889,0.897,0.905]
+          },
+          {
+            id:"shopping", initials:"SH", name:"Shopping Agent", zone:"home", cat:"life",
+            status:"waiting", statusLabel:"Waiting", needsMe:false,
+            rider:"General-purpose model · household rider",
+            who:"<strong>Shopping Agent</strong> — a general-purpose model on a household rider, deployed for the weekly shop.",
+            what:"The weekly list is built from the usual basket and what's running low. It is waiting on the supermarket's delivery slots for Saturday before it places anything.",
+            where:"<strong>Home</strong> zone. Touches the supermarket account and the household list. Card on file stays untouched until you approve the basket.",
+            why:"Standing instruction: <em>“Keep us stocked on the usual. Never substitute the coffee.”</em>",
+            when:"Builds the list Thursday evening; orders Friday for Saturday delivery. Deployed 30 October.",
+            how:"Crosses over <strong>AVP</strong>, through the supermarket connector. Authority: <strong>SWARM</strong> — usual-basket scope, approve-before-order.",
+            which:"Bridge crossing <strong>C-1048</strong> — AVP main deck, retail lane. Formed up at the gate, not yet crossed.",
+            now:"Waiting — delivery slots not yet released. It will nudge you Friday if the basket changes.",
+            swarm:"<strong>You</strong>, via SWARM — usual basket, approval before order",
+            avp:"AVP main deck · supermarket connector · crossing C-1048",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.846,0.850,0.848,0.851,0.849,0.852,0.850,0.848,0.851,0.849]
+          },
+          {
+            id:"travel", initials:"TR", name:"Travel Agent", zone:"travel", cat:"life",
+            status:"working", statusLabel:"Working", needsMe:false,
+            rider:"General-purpose model · travel rider",
+            who:"<strong>Travel Agent</strong> — a general-purpose model on a travel rider, deployed for next month's trip.",
+            what:"Watching the train and flight options for the trip, holding the best combination without booking — prices and times checked twice a day.",
+            where:"<strong>Travel</strong> zone. Touches the rail and airline sites via their connectors. It can hold an option; it cannot pay.",
+            why:"Standing instruction: <em>“Get me there rested, not just cheap. Hold options, never book without me.”</em>",
+            when:"Watching until the trip is booked or dropped. Deployed 5 November.",
+            how:"Crosses over <strong>AVP</strong>, through the travel connectors. Authority: <strong>SWARM</strong> — hold-only scope, no payment rights, granted by you.",
+            which:"Bridge crossing <strong>C-1051</strong> — AVP main deck, travel lane.",
+            now:"Working — the 07:40 option is held until 18:00 today (see Crossings).",
+            swarm:"<strong>You</strong>, via SWARM — hold options only, never book",
+            avp:"AVP main deck · rail &amp; airline connectors · crossing C-1051",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.852,0.848,0.854,0.850,0.847,0.853,0.851,0.849,0.852,0.850]
+          },
+          {
+            id:"family", initials:"FA", name:"Family Calendar Agent", zone:"family", cat:"life",
+            status:"working", statusLabel:"Working", needsMe:false,
+            rider:"Small fast model · family rider",
+            who:"<strong>Family Calendar Agent</strong> — a small, fast model on a family rider, deployed by you and shared with the family by their choice.",
+            what:"Keeping the shared calendar honest — birthdays, visits, the Sunday lunch rota — and sending the gentle reminders so nobody has to.",
+            where:"<strong>Family</strong> zone. Touches the shared family calendar and the reminder list. It sees events, not messages.",
+            why:"Standing instruction: <em>“Nobody misses a birthday. Nobody gets nagged twice.”</em>",
+            when:"Always on, quietly. Deployed 29 October.",
+            how:"Crosses over <strong>AVP</strong>, through the shared-calendar connector. Authority: <strong>SWARM</strong> — granted by you, visible to every family member it serves.",
+            which:"Bridge crossing <strong>C-1036</strong> — AVP main deck, calendar lane.",
+            now:"Working — Sunday lunch invite sent this morning (see Crossings).",
+            swarm:"<strong>You</strong>, via SWARM — shared-calendar scope, family-visible",
+            avp:"AVP main deck · shared calendar connector · crossing C-1036",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.848,0.852,0.850,0.846,0.851,0.849,0.853,0.850,0.848,0.851]
+          },
+          {
+            id:"writing", initials:"WR", name:"Writing Agent", zone:"creative", cat:"life",
+            status:"working", statusLabel:"Working", needsMe:false,
+            rider:"General-purpose model · writing rider",
+            who:"<strong>Writing Agent</strong> — a general-purpose model on a writing rider, deployed for the memoir draft.",
+            what:"Holding the draft's structure — chapter order, loose ends, the list of stories still to tell — and tidying notes into the right chapters as you dictate them.",
+            where:"<strong>Creative</strong> zone. Touches the notes app and the draft folder. Nothing is published, ever, from here.",
+            why:"Standing instruction: <em>“Keep the shape of the book. My words stay my words — you file, you don't invent.”</em>",
+            when:"Evenings, when you write. Deployed 2 November.",
+            how:"Crosses over <strong>AVP</strong>, through the notes connector. Authority: <strong>SWARM</strong> — filing scope only, no publish rights anywhere.",
+            which:"Bridge crossing <strong>C-1044</strong> — AVP main deck, notes lane.",
+            now:"Working — last night's dictated note filed into Chapter 4.",
+            swarm:"<strong>You</strong>, via SWARM — file &amp; tidy scope, no publishing",
+            avp:"AVP main deck · notes connector · crossing C-1044",
+            brake:"Holding inside the seam", brakeState:"ok",
+            trace:[0.851,0.847,0.850,0.854,0.849,0.852,0.848,0.851,0.850,0.853]
+          }
+        ];
+
+        var ZONE_BY_ID = {};
+        ZONES.forEach(function(z){ ZONE_BY_ID[z.id] = z; });
+        var AGENT_BY_ID = {};
+        AGENTS.forEach(function(a){ AGENT_BY_ID[a.id] = a; });
+
+        /* ---------------- Build the map ---------------- */
+        var mapEl = document.getElementById("map");
+        ZONES.forEach(function(zone){
+          var z = document.createElement("div");
+          z.className = "zone zone-tint-" + zone.tint + (zone.tall ? " tall" : "") + (zone.wide ? " wide" : "");
+          z.setAttribute("data-zone", zone.id);
+          z.setAttribute("data-cat", zone.cat);
+
+          var agentsHere = AGENTS.filter(function(a){ return a.zone === zone.id; });
+          var countTxt = agentsHere.length === 0 ? "quiet" :
+            agentsHere.length + (agentsHere.length === 1 ? " agent" : " agents");
+
+          var html = '<p class="zname"><span>' + zone.name + '</span><span style="color:var(--faint);letter-spacing:0;text-transform:none;font-family:var(--sans);font-size:10.5px;">' + countTxt + '</span></p>' +
+                     '<p class="zsub">' + zone.sub + '</p>';
+          if (agentsHere.length === 0){
+            html += '<p class="quiet">No agent deployed here.</p>';
+          } else {
+            html += '<div class="pins">';
+            agentsHere.forEach(function(a){
+              html += '<div class="pin-wrap">' +
+                '<button type="button" class="pin st-' + a.status + (a.needsMe ? ' needsme' : '') + '" data-agent="' + a.id + '" aria-label="Open card for ' + a.name + ', status ' + a.statusLabel + '">' +
+                  a.initials + (a.needsMe ? '<span class="badge" aria-hidden="true">!</span>' : '') +
+                '</button>' +
+                '<span class="pin-name">' + a.name.replace(" Agent","") + '</span>' +
+              '</div>';
+            });
+            html += '</div>';
+          }
+          z.innerHTML = html;
+          mapEl.appendChild(z);
+        });
+
+        /* ---------------- Sparkline (coherence trace in the seam) ---------------- */
+        function sparklineSVG(agent){
+          var W = 300, H = 74, pad = 6;
+          var vMin = 0.78, vMax = 0.92;
+          function Y(v){ return pad + (vMax - v) / (vMax - vMin) * (H - pad * 2); }
+          var bandTop = Y(0.88), bandBot = Y(0.82);
+          var pts = agent.trace.map(function(v, i){
+            var x = pad + i / (agent.trace.length - 1) * (W - pad * 2);
+            return x.toFixed(1) + "," + Y(v).toFixed(1);
+          }).join(" ");
+          var halted = agent.brakeState === "halted";
+          var lastV = agent.trace[agent.trace.length - 1];
+          var lastX = W - pad, lastY = Y(lastV);
+          var traceColor = halted ? "#f0563f" : "#3ecf7a";
+          var s = '';
+          s += '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Coherence trace sparkline. The band between 0.82 and 0.88 is the seam.">';
+          s += '<rect x="0" y="' + bandTop.toFixed(1) + '" width="' + W + '" height="' + (bandBot - bandTop).toFixed(1) + '" fill="rgba(62,207,122,0.10)"/>';
+          s += '<line x1="0" y1="' + bandTop.toFixed(1) + '" x2="' + W + '" y2="' + bandTop.toFixed(1) + '" stroke="#f0563f" stroke-width="1" stroke-dasharray="4 3" opacity="0.75"/>';
+          s += '<line x1="0" y1="' + bandBot.toFixed(1) + '" x2="' + W + '" y2="' + bandBot.toFixed(1) + '" stroke="#4da3ff" stroke-width="1" stroke-dasharray="4 3" opacity="0.65"/>';
+          s += '<text x="2" y="' + (bandTop - 3).toFixed(1) + '" fill="#f0563f" font-size="8.5" font-family="monospace">0.88</text>';
+          s += '<text x="2" y="' + (bandBot + 10).toFixed(1) + '" fill="#4da3ff" font-size="8.5" font-family="monospace">0.82</text>';
+          s += '<text x="' + (W - 62) + '" y="' + ((bandTop + bandBot) / 2 + 3).toFixed(1) + '" fill="#3ecf7a" font-size="8.5" font-family="monospace" opacity="0.85">THE SEAM</text>';
+          s += '<polyline points="' + pts + '" fill="none" stroke="' + traceColor + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+          s += '<circle cx="' + lastX + '" cy="' + lastY.toFixed(1) + '" r="3.5" fill="' + traceColor + '"/>';
+          if (halted){
+            s += '<text x="' + (lastX - 44) + '" y="' + Math.max(10, lastY - 8).toFixed(1) + '" fill="#f0563f" font-size="9" font-weight="bold" font-family="monospace">HALTED</text>';
+          }
+          s += '</svg>';
+          return s;
+        }
+
+        /* ---------------- Agent card ---------------- */
+        var cardEl = document.getElementById("card");
+        var selectedId = null;
+
+        function statusClass(st){
+          return st === "working" ? "s-green" : st === "waiting" ? "s-amber" : st === "halted" ? "s-red" : "s-blue";
+        }
+
+        function renderCard(agent){
+          selectedId = agent.id;
+          var pins = document.querySelectorAll(".pin");
+          pins.forEach(function(p){
+            p.classList.toggle("selected", p.getAttribute("data-agent") === agent.id);
+          });
+          var pillClass = agent.needsMe ? "s-blue" : statusClass(agent.status);
+          var brakeClass = agent.brakeState === "halted" ? "s-red" : "s-green";
+          var statusColor = agent.status === "working" ? "green" : agent.status === "waiting" ? "amber" : agent.status === "halted" ? "red" : "blue";
+          var html = '';
+          html += '<div class="card-head">' +
+            '<div class="avatar" style="border-color:var(--' + statusColor + ')">' + agent.initials + '</div>' +
+            '<div><h3>' + agent.name + '</h3><p class="rider">' + agent.rider + '<br>' + ZONE_BY_ID[agent.zone].name + ' zone</p></div>' +
+            '<span class="status-pill"><span class="dot" style="background:var(--' + statusColor + ')"></span><span class="' + pillClass + '">' + agent.statusLabel + '</span></span>' +
+          '</div>';
+
+          html += '<div class="qa">';
+          var rows = [
+            ["Who's deployed", agent.who],
+            ["What", agent.what],
+            ["Where", agent.where],
+            ["Why", agent.why],
+            ["When", agent.when],
+            ["How", agent.how],
+            ["Which", agent.which],
+            ["Status now", agent.now]
+          ];
+          rows.forEach(function(r){
+            html += '<div class="qa-row"><span class="q">' + r[0] + '</span><p class="a">' + r[1] + '</p></div>';
+          });
+          html += '</div>';
+
+          html += '<div class="stack"><h4>The stack underneath this agent</h4>';
+          html += '<div class="stack-row"><span class="layer">SWARM</span><p class="val"><strong>Authority</strong> — ' + agent.swarm + '</p></div>';
+          html += '<div class="stack-row"><span class="layer">AVP</span><p class="val"><strong>Path</strong> — ' + agent.avp + '</p></div>';
+          html += '<div class="stack-row"><span class="layer">OAK</span><p class="val"><strong>Viewer</strong> — this card. OAK is the open layer you are looking through: the record is readable by you, owned by no one else.</p></div>';
+          html += '<div class="brake-box">' +
+            '<div class="brake-head"><span class="t">Turing Brake — coherence trace</span><span class="s ' + brakeClass + '">' + agent.brake + '</span></div>' +
+            sparklineSVG(agent) +
+            '<p class="band-note">True coherent inference lives inside the seam, <strong>0.82–0.88</strong>. Drift is an exit through the lower edge; thrash is an exit through the upper. The Brake holds the run on the seam — intervening at either edge, cancelling a run that leaves it rather than letting it complete.</p>' +
+            '<p class="know">How do we know? “Information in real time has a shape that evolves in real time at a cadence we understand.”</p>' +
+          '</div>';
+          html += '</div>';
+
+          cardEl.innerHTML = html;
+        }
+
+        mapEl.addEventListener("click", function(ev){
+          var btn = ev.target.closest(".pin");
+          if (!btn) return;
+          var agent = AGENT_BY_ID[btn.getAttribute("data-agent")];
+          if (agent) renderCard(agent);
+        });
+
+        /* Default card: the halted Research Agent — the halt is the feature. */
+        renderCard(AGENT_BY_ID["research"]);
+
+        /* ---------------- Filters ---------------- */
+        var filterBtns = document.querySelectorAll(".filters button");
+        function applyFilter(f){
+          filterBtns.forEach(function(b){
+            b.setAttribute("aria-pressed", b.getAttribute("data-filter") === f ? "true" : "false");
+          });
+          document.querySelectorAll(".zone").forEach(function(z){
+            var cat = z.getAttribute("data-cat");
+            var dim = false;
+            if (f === "work" && cat !== "work") dim = true;
+            if (f === "life" && cat !== "life") dim = true;
+            if (f === "needsme") dim = true; /* zones light back up only via their pins below */
+            z.classList.toggle("dim", dim);
+          });
+          document.querySelectorAll(".pin").forEach(function(p){
+            var a = AGENT_BY_ID[p.getAttribute("data-agent")];
+            var match = true;
+            if (f === "work") match = a.cat === "work";
+            if (f === "life") match = a.cat === "life";
+            if (f === "needsme") match = a.needsMe;
+            p.classList.toggle("dim", !match);
+            if (f === "needsme" && match){
+              var zoneEl = p.closest(".zone");
+              if (zoneEl) zoneEl.classList.remove("dim");
+            }
+          });
+        }
+        filterBtns.forEach(function(b){
+          b.addEventListener("click", function(){ applyFilter(b.getAttribute("data-filter")); });
+        });
+
+        /* ---------------- Crossings feed ---------------- */
+        var feedEl = document.getElementById("feed");
+        var clockEl = document.getElementById("feed-clock");
+        var FEED_SEED = [
+          { t:"09:12", tag:"crossed",  cls:"crossed",  html:"<strong>Bills Agent</strong> paid the electricity bill — crossed" },
+          { t:"09:14", tag:"crossed",  cls:"crossed",  html:"<strong>Inbox Agent</strong> filed the supplier thread and drafted a reply — crossed" },
+          { t:"09:15", tag:"crossed",  cls:"crossed",  html:"<strong>Travel Agent</strong> held the 07:40 train option — crossed" },
+          { t:"09:16", tag:"crossed",  cls:"crossed",  html:"<strong>Family Calendar Agent</strong> sent the Sunday lunch invite — crossed" },
+          { t:"09:19", tag:"rerouted", cls:"rerouted", html:"<strong>Shopping Agent</strong> found its usual path closed — AgentVeil rerouted it mid-crossing, list intact" },
+          { t:"09:41", tag:"halted",   cls:"held",     html:"<strong>Research Agent</strong> halted by the Turing Brake — trace left the seam; the loop never reached the far bank" }
+        ];
+        var FEED_POOL = [
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Inbox Agent</strong> filed three newsletters and surfaced one real letter — crossed" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Writing Agent</strong> filed a dictated note into Chapter 4 — crossed" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Bills Agent</strong> confirmed the water bill matches its standing order — crossed" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Diary Agent</strong> sent tomorrow's day-plan to your phone — crossed" },
+          { tag:"rerouted", cls:"rerouted", html:"<strong>Travel Agent</strong> switched to the AVP alternative path when its connector stalled — option still held" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Family Calendar Agent</strong> reminded everyone about Sunday, once — crossed" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Bills Agent</strong> logged the council tax schedule for next month — crossed" },
+          { tag:"crossed",  cls:"crossed",  html:"<strong>Inbox Agent</strong> drafted a thank-you reply for your approval — crossed" }
+        ];
+        function feedItem(entry, fresh){
+          var li = document.createElement("li");
+          if (fresh) li.className = "fresh";
+          li.innerHTML = '<span class="ftime">' + entry.t + '</span><p class="ftext">' + entry.html + '</p><span class="ftag ' + entry.cls + '">' + entry.tag + '</span>';
+          return li;
+        }
+        /* Newest first — live entries are prepended above these. */
+        FEED_SEED.slice().reverse().forEach(function(e){ feedEl.appendChild(feedItem(e, false)); });
+
+        var mins = 9 * 60 + 43, poolIdx = 0;
+        function fmt(m){ var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm; }
+        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reduced){
+          setInterval(function(){
+            mins += 2;
+            var e = FEED_POOL[poolIdx % FEED_POOL.length]; poolIdx++;
+            var entry = { t: fmt(mins), tag: e.tag, cls: e.cls, html: e.html };
+            feedEl.insertBefore(feedItem(entry, true), feedEl.firstChild);
+            while (feedEl.children.length > 7) feedEl.removeChild(feedEl.lastChild);
+            clockEl.textContent = "LATEST " + entry.t;
+          }, 7000);
+        }
+      })();
+    </script>
+  </body>
+</html>
